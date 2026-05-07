@@ -10,7 +10,7 @@ connection()
     })
 
     server.on("error", (err)=>{
-        console.log(`Server err &{err}`);
+        console.log(`Server err ${err}`);
     })
 
 })
