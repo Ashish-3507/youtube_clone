@@ -1,4 +1,4 @@
-//this code i same we can just copy paste this and use in different projects or work
+//this code is same we can just copy paste this and use in different projects or work
 
 import {v2 as cloudinary}from 'cloudinary';
 import { response } from 'express';
