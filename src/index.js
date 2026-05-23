@@ -5,7 +5,7 @@ import app from './app.js';
 
 connection()
 .then(() => {
-    const server = app.listen(process.env.Port||8000, ()=>{
+    const server = app.listen(process.env.PORT||8000, ()=>{
         console.log(`succesful connection on port:${process.env.PORT}`);
     })
 

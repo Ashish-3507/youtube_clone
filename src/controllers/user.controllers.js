@@ -32,7 +32,7 @@ const userRegister = asyncHandler(async(req,res)=>{
 ////////////////////////////////////////////////////////////////
 
         //checking user if it already exist or not
-        const userExist = User.findOne({
+        const userExist = await User.findOne({
             $or:[{username}, {email}]
         });
         if(userExist){
@@ -42,9 +42,9 @@ const userRegister = asyncHandler(async(req,res)=>{
 ////////////////////////////////////////////////////////////////
 
 //hadling files and images as we cannot handle them directly like we did with fields to handle the files is done with the help of multer
-        const avatarLocalPath = req.file?.avatar[0]?.path;               //if(?) we hav file which file .avatar which we named at routes with the help of upload.fields 
+        const avatarLocalPath = req.files?.avatar[0]?.path;               //if(?) we hav file which file .avatar which we named at routes with the help of upload.fields 
                                                                          //what happening is that in multer middelware we have created a storage nested object where at index 0 we store the path of file and at 1 we store the name wich we have keept original file name
-        const coverImageLocalPath = req.file?.coverimage[0]?.path;
+        const coverImageLocalPath = req.files?.coverimage[0]?.path;
 
         if(!avatarLocalPath){
             throw new ApiError(400, "Avatar image is required");
@@ -54,22 +54,22 @@ const userRegister = asyncHandler(async(req,res)=>{
         const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
         if(!avatar){
-            throw new ApiError(400, "Avatar image is needed");
+            throw new ApiError(400, "Avatar image is not uploaded");
         };
 
         //creating user object to ener in the db
-        const user = User.create({
+        const user = await User.create({
             fullname,
             username: username.toLowerCase(),
             avatar: avatar.url,
-            coverImage:coverImage?.url || "",
+            coverimage:coverImage?.url || "",
             password,
             email,
         });
         
         /////////////////////////////////////////////////
         //checking wheather the user is created or not now if user is created then we have _iduser created by the mongodb so..
-        const createdUser = user.findById(user._id).select("-password -refreshToken");//find the user with id then remove the password and refreshtoken field for res
+        const createdUser = await user.findById(user._id).select("-password -refreshToken");//find the user with id then remove the password and refreshtoken field for res
 
         if(!createdUser){
             throw new ApiError(400, "Something went wrong while registering the user");
