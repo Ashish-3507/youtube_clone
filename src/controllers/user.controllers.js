@@ -3,6 +3,7 @@ import {ApiError} from '../utils/ApiErrors.js';
 import {User} from '../models/user.model.js';
 import {uploadOnCloudinary}  from "../utils/cloudinary.js";
 import {ApiResponse} from '../utils/ApiResponse.js';
+import { upload } from "../middelwares/multer.middelware.js";
 
 const userRegister = asyncHandler(async(req,res)=>{
     //get user details from the frontend;
@@ -40,11 +41,13 @@ const userRegister = asyncHandler(async(req,res)=>{
         }
 
 ////////////////////////////////////////////////////////////////
-
 //hadling files and images as we cannot handle them directly like we did with fields to handle the files is done with the help of multer
-        const avatarLocalPath = req.files?.avatar[0]?.path;               //if(?) we hav file which file .avatar which we named at routes with the help of upload.fields 
+        const avatarLocalPath = req.files?.avatar?.[0]?.path;               //if(?) we hav file which file .avatar which we named at routes with the help of upload.fields 
                                                                          //what happening is that in multer middelware we have created a storage nested object where at index 0 we store the path of file and at 1 we store the name wich we have keept original file name
-        const coverImageLocalPath = req.files?.coverimage[0]?.path;
+        let coverImageLocalPath;
+        if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length>0){
+            coverImageLocalPath = req.files.coverImage[0].path
+        }
 
         if(!avatarLocalPath){
             throw new ApiError(400, "Avatar image is required");
@@ -69,7 +72,7 @@ const userRegister = asyncHandler(async(req,res)=>{
         
         /////////////////////////////////////////////////
         //checking wheather the user is created or not now if user is created then we have _iduser created by the mongodb so..
-        const createdUser = await user.findById(user._id).select("-password -refreshToken");//find the user with id then remove the password and refreshtoken field for res
+        const createdUser = await User.findById(user._id).select("-password -refreshToken");//find the user with id then remove the password and refreshtoken field for res
 
         if(!createdUser){
             throw new ApiError(400, "Something went wrong while registering the user");
