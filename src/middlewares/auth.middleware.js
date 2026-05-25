@@ -1,7 +1,7 @@
-import { ApiError } from "../utils/ApiErrors";
-import { asyncHandler } from "../utils/asycnHandler";
+import { ApiError } from "../utils/ApiErrors.js";
+import { asyncHandler } from "../utils/asycnHandler.js";
 import jwt from 'jsonwebtoken';
-import User from '../models/user.model.js';
+import {User} from '../models/user.model.js';
 
 
 //i  this we are not using anything related to the res so we have put _ just one way of representing so that if seen in any other code i could read it

@@ -4,15 +4,20 @@ import {User} from '../models/user.model.js';
 import {uploadOnCloudinary}  from "../utils/cloudinary.js";
 import {ApiResponse} from '../utils/ApiResponse.js';
 import { upload } from "../middlewares/multer.middelware.js";
+import jwt  from "jsonwebtoken";
 
 
 //create this after you taking the (specefic)user out nor the User model one which allow us to take a userid when logedin and
 //generate a access and refresh token for that user
-const generateRefereshAndAccessToken = async(userid)=>{
+const generateRefreshAndAccessToken = async(userid)=>{
     try{
         const user =await User.findById(userid);
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+            }
         const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefereshToken();
+        const refreshToken = user.generateRefreshToken();
 
 
         user.refreshToken = refreshToken;
@@ -22,7 +27,7 @@ const generateRefereshAndAccessToken = async(userid)=>{
         return {accessToken,refreshToken}
 
     }catch(error){
-        throw new ApiError(500, "Something went wrong while generating refresh and access token ")
+        throw new ApiError(500, error?.message || "Something went wrong while generating refresh and access token ")
     }
 }
 
@@ -131,7 +136,7 @@ const loginUser =asyncHandler(async(req,res)=>{
         throw new ApiError(400, "the entered password is wrong");
     }
 
-    const {accessToken, refreshToken} =await generateRefereshAndAccessToken(user._id);
+    const {accessToken, refreshToken} =await generateRefreshAndAccessToken(user._id);
 
 
     //instead of useing query to againtake user while leaving out the password and token example inregister user 
@@ -146,7 +151,7 @@ const loginUser =asyncHandler(async(req,res)=>{
     //so designing options for the cookies
     const option = {
         httpOnly:true,
-        secure:false
+        secure:true
     }
 
     //now we have designed the option for cookies normaly cookies can be modified from both backend and frontend 
@@ -154,7 +159,7 @@ const loginUser =asyncHandler(async(req,res)=>{
 
     return res.status(200)
     .cookie("accessToken", accessToken, option)
-    .cookie("refereshToken" , refreshToken, option)
+    .cookie("refreshToken" , refreshToken, option)
     .json(
         new ApiResponse(200, {
         user: loggedInUser, refreshToken,accessToken
@@ -192,7 +197,43 @@ const logOutUser = asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200, {}, "User is successfull loged out!!"));
 })
 
+const refreshAccessToken = asyncHandler(async(req,res)=>{
+    const incomingRefreshToken = req.cookies.refreshToken||req.body.refreshToken;
+    if(!incomingRefreshToken){
+        throw new ApiError(401, "Unauthorized access");
+    }
+
+    try {
+        const decodedTOken = jwt.verify(incomingRefreshToken, REFRESH_TOKEN_SECRET);
+    
+        const user = User.findById(decodedTOken?._id);
+        if(!user){
+            throw ApiError(401, "invalid refresh token!!")
+        }
+        if(incomingRefreshToken != user?.refreshToken){
+            throw ApiError(401, "invalid refresh token or expired!!");
+        }
+    
+        const option = {
+            httpOnly:true,
+            secure:true
+        }
+    
+        const {accessToken , newRefreshToken} = await generateRefreshAndAccessToken(user._id);
+    
+        res.status(200)
+        .cookie("accessToken", accessToken, option)
+        .cookie("refreshToken", newRefreshToken, option)
+        .json(
+            new ApiResponse(200, {accessToken, newRefreshToken} , "Token generated successfully")
+        )
+    } catch (error) {
+        throw new ApiError(400, error?.message || "invalid token!!!!")
+    }
+})
+
 export {userRegister,
         loginUser,
-        logOutUser
+        logOutUser,
+        refreshAccessToken,
 };

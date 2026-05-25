@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.pre("save", async function () {
-    if(!this.isModified("password")) return next();
+    if(!this.isModified("password")) return ;
     this.password = await bcrypt.hash(this.password, 10);
 })//to only hash when the password field is mmodified
 
@@ -85,14 +85,14 @@ userSchema.methods.generateAccessToken = function(){
 //here we do not need as much data as that of access token as this is used to create a new access token so just knowing the user is enough
 //thats why for the security and other reason it have long expity time compared to access token this just create new accesstoken as that expiry
 //access token is send repeatly as req,header(authorization) from frontend not the refresh token
-userSchema.methods.generateRefereshToken = function(){
+userSchema.methods.generateRefreshToken = function(){
     return jwt.sign(
         {
             _id:this._id,
         },
-        process.env.REFERESH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_SECRET,
         {
-            expiresIn:process.env.REFERESH_TOKEN_EXPIRY,
+            expiresIn:process.env.REFRESH_TOKEN_EXPIRY,
         }
     )
 }
