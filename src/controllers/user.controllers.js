@@ -3,7 +3,28 @@ import {ApiError} from '../utils/ApiErrors.js';
 import {User} from '../models/user.model.js';
 import {uploadOnCloudinary}  from "../utils/cloudinary.js";
 import {ApiResponse} from '../utils/ApiResponse.js';
-import { upload } from "../middelwares/multer.middelware.js";
+import { upload } from "../middlewares/multer.middelware.js";
+
+
+//create this after you taking the (specefic)user out nor the User model one which allow us to take a userid when logedin and
+//generate a access and refresh token for that user
+const generateRefereshAndAccessToken = async(userid)=>{
+    try{
+        const user =await User.findById(userid);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefereshToken();
+
+
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave:false});
+
+
+        return {accessToken,refreshToken}
+
+    }catch(error){
+        throw new ApiError(500, "Something went wrong while generating refresh and access token ")
+    }
+}
 
 const userRegister = asyncHandler(async(req,res)=>{
     //get user details from the frontend;
@@ -82,6 +103,96 @@ const userRegister = asyncHandler(async(req,res)=>{
             new ApiResponse(201, createdUser, "User is registered successfully")
         );
 
+});
+
+const loginUser =asyncHandler(async(req,res)=>{
+    //data from req.body
+    //check wheather the user exist using username or email
+    //check is the password is rigth;
+    //generate refresha and acess token
+    //send those token using cookies
+
+    const {email, username, password} = req.body;
+
+    if(!(username || email)){
+        throw new ApiError(400, "username or email is required")
+    }
+
+    const user = await User.findOne({
+            $or:[{email} , {username}]
+    })
+    if(!user){
+        throw new ApiError(400, "user does not exist");
+    }
+    
+    const isPasswordValid = await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid){
+        throw new ApiError(400, "the entered password is wrong");
+    }
+
+    const {accessToken, refreshToken} =await generateRefereshAndAccessToken(user._id);
+
+
+    //instead of useing query to againtake user while leaving out the password and token example inregister user 
+    //to  send respons i converted the data of user i have into object so now instead of mongodb method we can use javascript one and manupulate that data inserver instead of going back and forth between
+    //server and db which could be expensive depending on situation;
+    
+    const loggedInUser = user.toObject();
+    delete loggedInUser.password;
+    delete loggedInUser.refreshToken;
+
+    //now we will creating options to send response and cookies with it 
+    //so designing options for the cookies
+    const option = {
+        httpOnly:true,
+        secure:false
+    }
+
+    //now we have designed the option for cookies normaly cookies can be modified from both backend and frontend 
+    //but as we allow true to httpOnly and secure now cookies can only be modified from the server
+
+    return res.status(200)
+    .cookie("accessToken", accessToken, option)
+    .cookie("refereshToken" , refreshToken, option)
+    .json(
+        new ApiResponse(200, {
+        user: loggedInUser, refreshToken,accessToken
+            },
+        "User is succesfully logendIN"
+        )
+    )
 })
 
-export {userRegister};
+const logOutUser = asyncHandler(async(req,res)=>{
+    //remove accesstoken and refreshtoken to logout 
+    //remoove the refreshtoken from the user datamodel
+    //clearing the cookie
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set:{ 
+                refreshToken: undefined
+            },
+        },
+        {
+                new:true,
+            }
+    );
+
+    const option={
+        httpOnly:true,
+        secure:true
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken", option)
+    .clearCookie("refreshToken", option)
+    .json(new ApiResponse(200, {}, "User is successfull loged out!!"));
+})
+
+export {userRegister,
+        loginUser,
+        logOutUser
+};

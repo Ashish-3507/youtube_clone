@@ -20,6 +20,7 @@ import userRouter from './src/routes/user.router.js';
 
 
 
+
 //routes declaration
 app.use("/api/v1/user", userRouter);
 

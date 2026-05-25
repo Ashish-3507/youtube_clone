@@ -1,9 +1,13 @@
 import { Router} from "express";
-import { userRegister } from "../controllers/user.controllers.js";
-import {upload} from '../middelwares/multer.middelware.js';
+import {logOutUser, loginUser, userRegister } from "../controllers/user.controllers.js";
+import {upload} from '../middlewares/multer.middelware.js';
+import verifyJWT from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+
+//we are using multer upload method here as we have to post data on the server wich is file so inside the .post() we have writen some credentials
+//like name or variable under which the tring is store thr amount of file we can upload and all that and rounting to the controlerr userregister
 router.route("/register").post
 (
     upload.fields([
@@ -18,5 +22,10 @@ router.route("/register").post
     ]),
     userRegister
 );
+
+router.route("/login").post(loginUser)
+
+//secure route
+router.route("/logout").post(verifyJWT , logOutUser);
 
 export default router
