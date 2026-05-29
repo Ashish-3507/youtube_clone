@@ -232,8 +232,117 @@ const refreshAccessToken = asyncHandler(async(req,res)=>{
     }
 })
 
+const changePassword = asyncHandler(async(req,res)=>{
+    //extracting oldpassowrd input and new password input
+    const {oldPassword, newPassword} = req.body;
+    
+    //we have a auth middel ware before running this req where we check jwt where we also have the user in req.use from there we took 
+    //the user by finding its is that is saved in there 
+    const user = await User.findById(req?.user._id);
+
+    //checking if the prev or old password entered is correct or not
+    const isPasswordCorrect = await User.isPasswordCorrect(oldPassword);
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"the givenpassword is incorrect");
+    }
+
+    //if correct save insde or change the password of the user that we took
+    user.password = newPassword;
+
+    //validation of means no need to chack all required that we have set in database when saving this
+    user.Save({
+        validateBeforeSave:false,
+    })
+
+    return res.status(200).json(
+        new ApiResponse(200, {},  "The password is successfully chnaged")
+    )
+})
+
+const currenttUser = asyncHandler(async(req,res)=>{
+    return res.status(200).json(
+        200, req.user, "current user fetched successfully"
+    )
+})
+
+const changeUserDetails = asyncHandler(async(req,res)=>{
+    const {fullname,email} = req.body;
+    if(!email || !fullname ){
+        throw new ApiError(400, "fill the input fields");
+    }
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{  //two was to set data in data base....
+                fullname,
+                email:email
+            }
+        },
+        {new:true},
+    ).select("-password");
+
+    return res.status.json(
+        new ApiResponse(200, {} , "the user data is updated sucessfully")
+    )
+})
+
+const updateAvatar =asyncHandler(async(req,res)=>{
+    //where did i got req.file fromits is middel ware multer that we will apply to the routes of this crontroller 
+    //and req.files to access multiple file if just one then req.file
+    const avatarLocalPath = req.file?.path;
+    if(!avatarLocalPath){
+        throw new ApiError(400,"avatar file is missing");
+    }
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    if(!avatar.url){
+        throw new ApiError(400,"file is not uploaded on the cloude properly");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar:avatar.url,
+            }
+        },
+        {new:true},
+    ).select("-password");
+
+    return res.status(200).json(200,"Avatar is uploaded/changed successfully");
+})
+
+const upadateCoverIMage =asyncHandler(async(req,res)=>{
+    //where did i got req.file fromits is middel ware multer that we will apply to the routes of this crontroller 
+    //and req.files to access multiple file if just one then req.file
+    const coverImageLocalPath = req.file?.path;
+    if(!coverImageLocalPath){
+        throw new ApiError(400,"avatar file is missing");
+    }
+    const coverImage = await uploadOnCloudinary(avatarLocalPath)
+    if(!coverImage.url){
+        throw new ApiError(400,"file is not uploaded on the cloude properly");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                coverImage:coverImage.url,
+            }
+        },
+        {new:true},
+    ).select("-password");
+
+    return res.status(200).json(200,"coverImage is uploaded/changed successfully");
+})
+
 export {userRegister,
         loginUser,
         logOutUser,
         refreshAccessToken,
+        changePassword,
+        currenttUser,
+        changeUserDetails,
+        updateAvatar,
+        upadateCoverIMage,
 };
